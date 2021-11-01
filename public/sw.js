@@ -1,5 +1,5 @@
-var STATIC_CACHE_VERSION_NAME='static-v1';
-var DYNAMIC_CACHE_VERSION_NAME='dynamic-v1';
+var STATIC_CACHE_VERSION_NAME = 'static-v2';
+var DYNAMIC_CACHE_VERSION_NAME = 'dynamic-v1';
 
 self.addEventListener('install', function (event) {
     console.log('Installing Service Worker ...', event);
@@ -10,6 +10,7 @@ self.addEventListener('install', function (event) {
                     cache.addAll([
                         '/',
                         '/index.html',
+                        '/offline.html',
                         '/src/js/app.js',
                         '/src/js/feed.js',
                         '/src/js/promise.js',
@@ -28,16 +29,16 @@ self.addEventListener('install', function (event) {
 self.addEventListener('activate', function (event) {
     console.log('Activating Service Worker ...', event);
     event.waitUntil(
-      caches.keys()
-            .then(function(keyList){
-               return Promise.all(keyList.map(function(key){
-                    if(key!==STATIC_CACHE_VERSION_NAME && key!==DYNAMIC_CACHE_VERSION_NAME){
-                        console.log('Removed Cache ',key);
+        caches.keys()
+            .then(function (keyList) {
+                return Promise.all(keyList.map(function (key) {
+                    if (key !== STATIC_CACHE_VERSION_NAME && key !== DYNAMIC_CACHE_VERSION_NAME) {
+                        console.log('Removed Cache ', key);
                         return caches.delete(key)
                     }
-               }))
+                }))
             })
-    );    
+    );
     return self.clients.claim();
 });
 
@@ -50,16 +51,19 @@ self.addEventListener('fetch', function (event) {
                 return response;
             } else {
                 return fetch(event.request)
-                         .then(function(res){
-                             caches.open(DYNAMIC_CACHE_VERSION_NAME)
-                             .then(function(cache){
-                                 cache.put(event.request.url,res.clone());
-                                 return res;
-                             })
-                         }).catch(function(error){
+                    .then(function (res) {
+                        caches.open(DYNAMIC_CACHE_VERSION_NAME)
+                            .then(function (cache) {
+                                cache.put(event.request.url, res.clone());
+                                return res;
+                            })
+                    }).catch(function (error) {
 
-
-                         });
+                        return caches.open(STATIC_CACHE_VERSION_NAME)
+                            .then(function (cache) {
+                              return  cache.match('/offline.html')
+                            })
+                    });
             }
         }));
 
