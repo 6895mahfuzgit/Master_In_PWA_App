@@ -1,4 +1,4 @@
-var STATIC_CACHE_VERSION_NAME = 'static-v2';
+var STATIC_CACHE_VERSION_NAME = 'static-v24';
 var DYNAMIC_CACHE_VERSION_NAME = 'dynamic-v1';
 
 self.addEventListener('install', function (event) {
@@ -27,44 +27,76 @@ self.addEventListener('install', function (event) {
 });
 
 self.addEventListener('activate', function (event) {
-    console.log('Activating Service Worker ...', event);
+    console.log('[Service Worker] Activating Service Worker ....', event);
     event.waitUntil(
-        caches.keys()
-            .then(function (keyList) {
-                return Promise.all(keyList.map(function (key) {
-                    if (key !== STATIC_CACHE_VERSION_NAME && key !== DYNAMIC_CACHE_VERSION_NAME) {
-                        console.log('Removed Cache ', key);
-                        return caches.delete(key)
-                    }
-                }))
-            })
+      caches.keys()
+        .then(function (keyList) {
+          return Promise.all(keyList.map(function (key) {
+            if (key !== CACHE_STATIC_NAME && key !== CACHE_DYNAMIC_NAME) {
+              console.log('[Service Worker] Removing old cache.', key);
+              return caches.delete(key);
+            }
+          }));
+        })
     );
     return self.clients.claim();
-});
-
-self.addEventListener('fetch', function (event) {
-    console.log('Fetching ...', event);
-    //return event.respondWith(event.request);
-    event.respondWith(
-        caches.match(event.request).then(function (response) {
+  });
+  
+  function isInArray(string, array) {
+    var cachePath;
+    if (string.indexOf(self.origin) === 0) { // request targets domain where we serve the page from (i.e. NOT a CDN)
+      console.log('matched ', string);
+      cachePath = string.substring(self.origin.length); // take the part of the URL AFTER the domain (e.g. after localhost:8080)
+    } else {
+      cachePath = string; // store the full request (for CDNs)
+    }
+    return array.indexOf(cachePath) > -1;
+  }
+  self.addEventListener('fetch', function (event) {
+  
+    var url = 'https://pwagrambd-default-rtdb.firebaseio.com/posts';
+    if (event.request.url.indexOf(url) > -1) {
+      event.respondWith(
+        caches.open(CACHE_DYNAMIC_NAME)
+          .then(function (cache) {
+            return fetch(event.request)
+              .then(function (res) {
+                // trimCache(CACHE_DYNAMIC_NAME, 3);
+                cache.put(event.request, res.clone());
+                return res;
+              });
+          })
+      );
+    } else if (isInArray(event.request.url, STATIC_FILES)) {
+      event.respondWith(
+        caches.match(event.request)
+      );
+    } else {
+      event.respondWith(
+        caches.match(event.request)
+          .then(function (response) {
             if (response) {
-                return response;
+              return response;
             } else {
-                return fetch(event.request)
-                    .then(function (res) {
-                        caches.open(DYNAMIC_CACHE_VERSION_NAME)
-                            .then(function (cache) {
-                                cache.put(event.request.url, res.clone());
-                                return res;
-                            })
-                    }).catch(function (error) {
-
-                        return caches.open(STATIC_CACHE_VERSION_NAME)
-                            .then(function (cache) {
-                              return  cache.match('/offline.html')
-                            })
+              return fetch(event.request)
+                .then(function (res) {
+                  return caches.open(CACHE_DYNAMIC_NAME)
+                    .then(function (cache) {
+                      // trimCache(CACHE_DYNAMIC_NAME, 3);
+                      cache.put(event.request.url, res.clone());
+                      return res;
+                    })
+                })
+                .catch(function (err) {
+                  return caches.open(CACHE_STATIC_NAME)
+                    .then(function (cache) {
+                      if (event.request.headers.get('accept').includes('text/html')) {
+                        return cache.match('/offline.html');
+                      }
                     });
+                });
             }
-        }));
-
-});
+          })
+      );
+    }
+  });
