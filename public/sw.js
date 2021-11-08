@@ -1,3 +1,5 @@
+importScripts('/src/js/idb.js')
+
 var STATIC_CACHE_VERSION_NAME = 'static-v24';
 var DYNAMIC_CACHE_VERSION_NAME = 'dynamic-v1';
 
@@ -13,6 +15,7 @@ self.addEventListener('install', function (event) {
                         '/offline.html',
                         '/src/js/app.js',
                         '/src/js/feed.js',
+                        '/src/js/idb.js',
                         '/src/js/promise.js',
                         '/src/js/fetch.js',
                         '/src/js/material.min.js',
