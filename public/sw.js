@@ -2,8 +2,8 @@ importScripts('/src/js/idb.js');
 importScripts('/src/js/utility.js');
 
 
-var STATIC_CACHE_VERSION_NAME = 'static-v25';
-var DYNAMIC_CACHE_VERSION_NAME = 'dynamic-v2';
+var STATIC_CACHE_VERSION_NAME = 'static-v26';
+var DYNAMIC_CACHE_VERSION_NAME = 'dynamic-v3';
 
 self.addEventListener('install', function (event) {
   console.log('Installing Service Worker ...', event);
@@ -69,11 +69,16 @@ self.addEventListener('fetch', function (event) {
       .then(function (res) {
 
         var copyResponse = res.clone();
-        copyResponse.json().then(data => {
-          for (var key in data) {
-            writeData('posts', data[key]);
-          }
+        clearAllData('posts').then(function () {
+
+          console.log('data cleared');
+          return copyResponse.json()
         })
+          .then(function (data) {
+            for (var key in data) {
+              writeData('posts', data[key]);
+            }
+          })
         return res;
       })
 
