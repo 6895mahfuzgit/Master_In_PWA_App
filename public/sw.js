@@ -18,6 +18,7 @@ self.addEventListener('install', function (event) {
             '/src/js/app.js',
             '/src/js/feed.js',
             '/src/js/idb.js',
+            '/src/js/utility.js',
             '/src/js/promise.js',
             '/src/js/fetch.js',
             '/src/js/material.min.js',
